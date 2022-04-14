@@ -17,6 +17,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"google.golang.org/grpc/metadata"
 	"net"
 	"os"
 	"time"
@@ -66,6 +67,7 @@ type checkoutService struct {
 	shippingSvcAddr       string
 	emailSvcAddr          string
 	paymentSvcAddr        string
+	clusterName           string
 }
 
 func main() {
@@ -95,6 +97,7 @@ func main() {
 	mustMapEnv(&svc.currencySvcAddr, "CURRENCY_SERVICE_ADDR")
 	mustMapEnv(&svc.emailSvcAddr, "EMAIL_SERVICE_ADDR")
 	mustMapEnv(&svc.paymentSvcAddr, "PAYMENT_SERVICE_ADDR")
+	mustMapEnv(&svc.clusterName, "KUBERNETES_CLUSTER_NAME")
 
 	log.Infof("service config: %+v", svc)
 
@@ -263,6 +266,9 @@ func (cs *checkoutService) PlaceOrder(ctx context.Context, req *pb.PlaceOrderReq
 	} else {
 		log.Infof("order confirmation email sent to %q", req.Email)
 	}
+	header := metadata.Pairs("x-cluster-name", cs.clusterName)
+	grpc.SendHeader(ctx, header)
+
 	resp := &pb.PlaceOrderResponse{Order: orderResult}
 	return resp, nil
 }
