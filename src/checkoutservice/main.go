@@ -18,6 +18,7 @@ import (
 	"context"
 	"fmt"
 	"google.golang.org/grpc/metadata"
+	"google.golang.org/grpc/reflection"
 	"net"
 	"os"
 	"time"
@@ -116,6 +117,7 @@ func main() {
 	}
 	pb.RegisterCheckoutServiceServer(srv, svc)
 	healthpb.RegisterHealthServer(srv, svc)
+	reflection.Register(srv)
 	log.Infof("starting to listen on tcp: %q", lis.Addr().String())
 	err = srv.Serve(lis)
 	log.Fatal(err)

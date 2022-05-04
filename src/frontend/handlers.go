@@ -210,6 +210,12 @@ func (fe *frontendServer) productHandler(w http.ResponseWriter, r *http.Request)
 
 func (fe *frontendServer) addToCartHandler(w http.ResponseWriter, r *http.Request) {
 	log := r.Context().Value(ctxKeyLog{}).(logrus.FieldLogger)
+
+	if deploymentDetailsMap["CART_DISABLED"] == "true" {
+		renderCheckoutUnderConstruction(log, r, w)
+		return
+	}
+
 	quantity, _ := strconv.ParseUint(r.FormValue("quantity"), 10, 32)
 	productID := r.FormValue("product_id")
 	if productID == "" || quantity == 0 {
@@ -247,6 +253,12 @@ func (fe *frontendServer) emptyCartHandler(w http.ResponseWriter, r *http.Reques
 func (fe *frontendServer) viewCartHandler(w http.ResponseWriter, r *http.Request) {
 	log := r.Context().Value(ctxKeyLog{}).(logrus.FieldLogger)
 	log.Debug("view user cart")
+
+	if deploymentDetailsMap["CART_DISABLED"] == "true" {
+		renderCheckoutUnderConstruction(log, r, w)
+		return
+	}
+
 	currencies, err := fe.getCurrencies(r.Context())
 	if err != nil {
 		renderHTTPError(log, r, w, errors.Wrap(err, "could not retrieve currencies"), http.StatusInternalServerError)
@@ -464,6 +476,17 @@ func renderHTTPError(log logrus.FieldLogger, r *http.Request, w http.ResponseWri
 		log.Println(templateErr)
 	}
 }
+func renderCheckoutUnderConstruction(log logrus.FieldLogger, r *http.Request, w http.ResponseWriter) {
+
+	w.WriteHeader(200)
+
+	if templateErr := templates.ExecuteTemplate(w, "under-construction", map[string]interface{}{
+		"request_id":        r.Context().Value(ctxKeyRequestID{}),
+		"deploymentDetails": deploymentDetailsMap,
+	}); templateErr != nil {
+		log.Println(templateErr)
+	}
+}
 
 func currentCurrency(r *http.Request) string {
 	c, _ := r.Cookie(cookieCurrency)
@@ -513,7 +536,7 @@ func renderCurrencyLogo(currencyCode string) string {
 		"GBP": "£",
 	}
 
-	logo := "$" //default
+	logo := "$" // default
 	if val, ok := logos[currencyCode]; ok {
 		logo = val
 	}
