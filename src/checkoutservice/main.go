@@ -98,7 +98,7 @@ func main() {
 	mustMapEnv(&svc.currencySvcAddr, "CURRENCY_SERVICE_ADDR")
 	mustMapEnv(&svc.emailSvcAddr, "EMAIL_SERVICE_ADDR")
 	mustMapEnv(&svc.paymentSvcAddr, "PAYMENT_SERVICE_ADDR")
-	mustMapEnv(&svc.clusterName, "KUBERNETES_CLUSTER_NAME")
+    svc.clusterName = os.Getenv("KUBERNETES_CLUSTER_NAME")
 
 	log.Infof("service config: %+v", svc)
 

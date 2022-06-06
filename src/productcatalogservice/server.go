@@ -19,6 +19,7 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"google.golang.org/grpc/reflection"
 	"io/ioutil"
 	"net"
 	"os"
@@ -145,6 +146,7 @@ func run(port string) string {
 
 	pb.RegisterProductCatalogServiceServer(srv, svc)
 	healthpb.RegisterHealthServer(srv, svc)
+	reflection.Register(srv)
 	go srv.Serve(l)
 	return l.Addr().String()
 }

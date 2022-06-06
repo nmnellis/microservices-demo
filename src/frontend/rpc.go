@@ -16,6 +16,8 @@ package main
 
 import (
 	"context"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/metadata"
 	"time"
 
 	pb "github.com/GoogleCloudPlatform/microservices-demo/src/frontend/genproto"
@@ -27,9 +29,9 @@ const (
 	avoidNoopCurrencyConversionRPC = false
 )
 
-func (fe *frontendServer) getCurrencies(ctx context.Context) ([]string, error) {
+func (fe *frontendServer) getCurrencies(ctx context.Context, headers, trailers *metadata.MD) ([]string, error) {
 	currs, err := pb.NewCurrencyServiceClient(fe.currencySvcConn).
-		GetSupportedCurrencies(ctx, &pb.Empty{})
+		GetSupportedCurrencies(ctx, &pb.Empty{}, grpc.Header(headers), grpc.Header(trailers))
 	if err != nil {
 		return nil, err
 	}
@@ -42,69 +44,69 @@ func (fe *frontendServer) getCurrencies(ctx context.Context) ([]string, error) {
 	return out, nil
 }
 
-func (fe *frontendServer) getProducts(ctx context.Context) ([]*pb.Product, error) {
+func (fe *frontendServer) getProducts(ctx context.Context, headers, trailers *metadata.MD) ([]*pb.Product, error) {
 	resp, err := pb.NewProductCatalogServiceClient(fe.productCatalogSvcConn).
-		ListProducts(ctx, &pb.Empty{})
+		ListProducts(ctx, &pb.Empty{}, grpc.Header(headers), grpc.Trailer(trailers))
 	return resp.GetProducts(), err
 }
 
-func (fe *frontendServer) getProduct(ctx context.Context, id string) (*pb.Product, error) {
+func (fe *frontendServer) getProduct(ctx context.Context, id string, headers, trailers *metadata.MD) (*pb.Product, error) {
 	resp, err := pb.NewProductCatalogServiceClient(fe.productCatalogSvcConn).
-		GetProduct(ctx, &pb.GetProductRequest{Id: id})
+		GetProduct(ctx, &pb.GetProductRequest{Id: id}, grpc.Header(headers), grpc.Header(trailers))
 	return resp, err
 }
 
-func (fe *frontendServer) getCart(ctx context.Context, userID string) ([]*pb.CartItem, error) {
-	resp, err := pb.NewCartServiceClient(fe.cartSvcConn).GetCart(ctx, &pb.GetCartRequest{UserId: userID})
+func (fe *frontendServer) getCart(ctx context.Context, userID string, headers, trailers *metadata.MD) ([]*pb.CartItem, error) {
+	resp, err := pb.NewCartServiceClient(fe.cartSvcConn).GetCart(ctx, &pb.GetCartRequest{UserId: userID}, grpc.Header(headers), grpc.Header(trailers))
 	return resp.GetItems(), err
 }
 
-func (fe *frontendServer) emptyCart(ctx context.Context, userID string) error {
-	_, err := pb.NewCartServiceClient(fe.cartSvcConn).EmptyCart(ctx, &pb.EmptyCartRequest{UserId: userID})
+func (fe *frontendServer) emptyCart(ctx context.Context, userID string, headers, trailers *metadata.MD) error {
+	_, err := pb.NewCartServiceClient(fe.cartSvcConn).EmptyCart(ctx, &pb.EmptyCartRequest{UserId: userID}, grpc.Header(headers), grpc.Header(trailers))
 	return err
 }
 
-func (fe *frontendServer) insertCart(ctx context.Context, userID, productID string, quantity int32) error {
+func (fe *frontendServer) insertCart(ctx context.Context, userID, productID string, quantity int32, headers, trailers *metadata.MD) error {
 	_, err := pb.NewCartServiceClient(fe.cartSvcConn).AddItem(ctx, &pb.AddItemRequest{
 		UserId: userID,
 		Item: &pb.CartItem{
 			ProductId: productID,
 			Quantity:  quantity},
-	})
+	}, grpc.Header(headers), grpc.Header(trailers))
 	return err
 }
 
-func (fe *frontendServer) convertCurrency(ctx context.Context, money *pb.Money, currency string) (*pb.Money, error) {
+func (fe *frontendServer) convertCurrency(ctx context.Context, money *pb.Money, currency string, headers, trailers *metadata.MD) (*pb.Money, error) {
 	if avoidNoopCurrencyConversionRPC && money.GetCurrencyCode() == currency {
 		return money, nil
 	}
 	return pb.NewCurrencyServiceClient(fe.currencySvcConn).
 		Convert(ctx, &pb.CurrencyConversionRequest{
 			From:   money,
-			ToCode: currency})
+			ToCode: currency}, grpc.Header(headers), grpc.Header(trailers))
 }
 
-func (fe *frontendServer) getShippingQuote(ctx context.Context, items []*pb.CartItem, currency string) (*pb.Money, error) {
+func (fe *frontendServer) getShippingQuote(ctx context.Context, items []*pb.CartItem, currency string, headers, trailers *metadata.MD) (*pb.Money, error) {
 	quote, err := pb.NewShippingServiceClient(fe.shippingSvcConn).GetQuote(ctx,
 		&pb.GetQuoteRequest{
 			Address: nil,
-			Items:   items})
+			Items:   items}, grpc.Header(headers), grpc.Header(trailers))
 	if err != nil {
 		return nil, err
 	}
-	localized, err := fe.convertCurrency(ctx, quote.GetCostUsd(), currency)
+	localized, err := fe.convertCurrency(ctx, quote.GetCostUsd(), currency, headers, trailers)
 	return localized, errors.Wrap(err, "failed to convert currency for shipping cost")
 }
 
-func (fe *frontendServer) getRecommendations(ctx context.Context, userID string, productIDs []string) ([]*pb.Product, error) {
+func (fe *frontendServer) getRecommendations(ctx context.Context, userID string, productIDs []string, headers, trailers *metadata.MD) ([]*pb.Product, error) {
 	resp, err := pb.NewRecommendationServiceClient(fe.recommendationSvcConn).ListRecommendations(ctx,
-		&pb.ListRecommendationsRequest{UserId: userID, ProductIds: productIDs})
+		&pb.ListRecommendationsRequest{UserId: userID, ProductIds: productIDs}, grpc.Header(headers), grpc.Header(trailers))
 	if err != nil {
 		return nil, err
 	}
 	out := make([]*pb.Product, len(resp.GetProductIds()))
 	for i, v := range resp.GetProductIds() {
-		p, err := fe.getProduct(ctx, v)
+		p, err := fe.getProduct(ctx, v, headers, trailers)
 		if err != nil {
 			return nil, errors.Wrapf(err, "failed to get recommended product info (#%s)", v)
 		}
@@ -116,12 +118,12 @@ func (fe *frontendServer) getRecommendations(ctx context.Context, userID string,
 	return out, err
 }
 
-func (fe *frontendServer) getAd(ctx context.Context, ctxKeys []string) ([]*pb.Ad, error) {
+func (fe *frontendServer) getAd(ctx context.Context, ctxKeys []string, headers, trailers *metadata.MD) ([]*pb.Ad, error) {
 	ctx, cancel := context.WithTimeout(ctx, time.Millisecond*100)
 	defer cancel()
 
 	resp, err := pb.NewAdServiceClient(fe.adSvcConn).GetAds(ctx, &pb.AdRequest{
 		ContextKeys: ctxKeys,
-	})
+	}, grpc.Header(headers), grpc.Trailer(trailers))
 	return resp.GetAds(), errors.Wrap(err, "failed to get ads")
 }

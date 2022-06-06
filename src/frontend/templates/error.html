@@ -30,6 +30,20 @@
                 <p><strong>HTTP Status:</strong> {{.status_code}} {{.status}}</p>
                 <pre class="border border-danger p-3"
                     style="white-space: pre-wrap; word-break: keep-all;">
+                    {{- if .headers }}
+Headers:
+                    {{- range $key,$val := .headers }}
+    {{ $key }}: {{ $val }}
+                    {{- end }}
+                    <br/>
+                    {{- end }}
+                    {{- if .trailers }}
+Trailers:
+                    {{- range $key,$val :=.trailers }}
+    {{ $key }}: {{ $val }}
+                    {{- end }}
+                    <br/>
+                    {{- end }}
                     {{- .error -}}
                 </pre>
             </div>
