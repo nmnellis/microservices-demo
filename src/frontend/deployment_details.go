@@ -78,6 +78,7 @@ func loadDeploymentDetails() {
 
 	deploymentDetailsMap["HOSTNAME"] = os.Getenv("KUBERNETES_POD_NAME")
 	deploymentDetailsMap["CLUSTERNAME"] = os.Getenv("KUBERNETES_CLUSTER_NAME")
+	deploymentDetailsMap["CART_DISABLED"] = os.Getenv("CART_DISABLED")
 
 	log.WithFields(logrus.Fields{
 		"cluster":  deploymentDetailsMap["CLUSTERNAME"],

@@ -48,7 +48,7 @@
     <header>
         <div class="navbar">
             <div class="container d-flex justify-content-center">
-                <div class="h-free-shipping">Cluster Name: {{ index $.deploymentDetails "CLUSTERNAME" }} Region: {{ index $.deploymentDetails "REGION" }} Zone: {{ index $.deploymentDetails "ZONE" }}</div>
+                <div class="h-free-shipping"><b>Cluster Name:</b> {{ index $.deploymentDetails "CLUSTERNAME" }}     <b>Locality:</b> {{ index $.deploymentDetails "REGION" }}/{{ index $.deploymentDetails "ZONE" }}</div>
             </div>
         </div>
         <div class="navbar sub-navbar">

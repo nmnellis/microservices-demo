@@ -60,7 +60,7 @@
     {{ end }}
   </div>
   <div class="ad">
-   {{ with $.ad }}{{ template "text_ad" . }}{{ end }}
+   {{ with $.ad }}{{ template "text_ad" . }}You are located in: {{$.ctx.ad_cluster_locality}} {{ end }}
   </div>
 </main>
 {{ template "footer" . }}

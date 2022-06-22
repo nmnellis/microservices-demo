@@ -17,6 +17,8 @@ package main
 import (
 	"context"
 	"fmt"
+	"google.golang.org/grpc/metadata"
+	"google.golang.org/grpc/reflection"
 	"net"
 	"os"
 	"time"
@@ -66,6 +68,7 @@ type checkoutService struct {
 	shippingSvcAddr       string
 	emailSvcAddr          string
 	paymentSvcAddr        string
+	clusterName           string
 }
 
 func main() {
@@ -95,6 +98,7 @@ func main() {
 	mustMapEnv(&svc.currencySvcAddr, "CURRENCY_SERVICE_ADDR")
 	mustMapEnv(&svc.emailSvcAddr, "EMAIL_SERVICE_ADDR")
 	mustMapEnv(&svc.paymentSvcAddr, "PAYMENT_SERVICE_ADDR")
+    svc.clusterName = os.Getenv("KUBERNETES_CLUSTER_NAME")
 
 	log.Infof("service config: %+v", svc)
 
@@ -113,6 +117,7 @@ func main() {
 	}
 	pb.RegisterCheckoutServiceServer(srv, svc)
 	healthpb.RegisterHealthServer(srv, svc)
+	reflection.Register(srv)
 	log.Infof("starting to listen on tcp: %q", lis.Addr().String())
 	err = srv.Serve(lis)
 	log.Fatal(err)
@@ -263,6 +268,9 @@ func (cs *checkoutService) PlaceOrder(ctx context.Context, req *pb.PlaceOrderReq
 	} else {
 		log.Infof("order confirmation email sent to %q", req.Email)
 	}
+	header := metadata.Pairs("x-cluster-name", cs.clusterName)
+	grpc.SendHeader(ctx, header)
+
 	resp := &pb.PlaceOrderResponse{Order: orderResult}
 	return resp, nil
 }
