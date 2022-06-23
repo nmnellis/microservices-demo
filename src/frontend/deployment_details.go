@@ -1,12 +1,15 @@
 package main
 
 import (
-	"net/http"
+	"context"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
 	"os"
 	"time"
 
-	"cloud.google.com/go/compute/metadata"
 	"github.com/sirupsen/logrus"
+	//  Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
+	"k8s.io/client-go/tools/clientcmd"
 )
 
 var deploymentDetailsMap map[string]string
@@ -35,30 +38,51 @@ func initializeLogger() {
 
 func loadDeploymentDetails() {
 	deploymentDetailsMap = make(map[string]string)
-	var metaServerClient = metadata.NewClient(&http.Client{})
 
-	podHostname, err := os.Hostname()
+	config, err := clientcmd.BuildConfigFromFlags("", "")
 	if err != nil {
-		log.Error("Failed to fetch the hostname for the Pod", err)
+		log.Panicln("failed to create K8s config")
 	}
 
-	podCluster, err := metaServerClient.InstanceAttributeValue("cluster-name")
+	clientset, err := kubernetes.NewForConfig(config)
 	if err != nil {
-		log.Error("Failed to fetch the name of the cluster in which the pod is running", err)
+		log.Panicln("Failed to create K8s clientset")
 	}
 
-	podZone, err := metaServerClient.Zone()
-	if err != nil {
-		log.Error("Failed to fetch the Zone of the node where the pod is scheduled", err)
+	nodeName := os.Getenv("KUBERNETES_NODE_NAME")
+	if nodeName != "" {
+		node, err := clientset.CoreV1().Nodes().Get(context.Background(), nodeName, v1.GetOptions{})
+		if err != nil {
+			log.Errorf("unable to get node %s %s", nodeName, err.Error())
+		}
+		zone := ""
+		region := ""
+
+		for k, a := range node.Labels {
+			log.Infof("looking at label %s", k)
+
+			if k == "topology.kubernetes.io/zone" {
+				log.Infof("found zone label %s:%s", k, a)
+				zone = a
+			}
+			if k == "topology.kubernetes.io/region" {
+				log.Infof("found region label %s:%s", k, a)
+
+				region = a
+			}
+		}
+
+		deploymentDetailsMap["ZONE"] = zone
+		deploymentDetailsMap["REGION"] = region
 	}
 
-	deploymentDetailsMap["HOSTNAME"] = podHostname
-	deploymentDetailsMap["CLUSTERNAME"] = podCluster
-	deploymentDetailsMap["ZONE"] = podZone
+	deploymentDetailsMap["HOSTNAME"] = os.Getenv("KUBERNETES_POD_NAME")
+	deploymentDetailsMap["CLUSTERNAME"] = os.Getenv("KUBERNETES_CLUSTER_NAME")
+	deploymentDetailsMap["CART_DISABLED"] = os.Getenv("CART_DISABLED")
 
 	log.WithFields(logrus.Fields{
-		"cluster":  podCluster,
-		"zone":     podZone,
-		"hostname": podHostname,
+		"cluster":  deploymentDetailsMap["CLUSTERNAME"],
+		"zone":     deploymentDetailsMap["ZONE"],
+		"hostname": deploymentDetailsMap["HOSTNAME"],
 	}).Debug("Loaded deployment details")
 }

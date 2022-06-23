@@ -48,7 +48,7 @@
     <header>
         <div class="navbar">
             <div class="container d-flex justify-content-center">
-                <div class="h-free-shipping">Free shipping with $75 purchase!</div>
+                <div class="h-free-shipping"><b>Cluster Name:</b> {{ index $.deploymentDetails "CLUSTERNAME" }}     <b>Locality:</b> {{ index $.deploymentDetails "REGION" }}/{{ index $.deploymentDetails "ZONE" }}</div>
             </div>
         </div>
         <div class="navbar sub-navbar">
@@ -77,13 +77,17 @@
                         </div>
                     </div>
                     {{ end }}
-
                     <a href="/cart" class="cart-link">
                         <img src="/static/icons/Hipster_CartIcon.svg" alt="Cart icon" class="logo" title="Cart" />
                         {{ if $.cart_size }}
                         <span class="cart-size-circle">{{$.cart_size}}</span>
                         {{ end }}
                     </a>
+                    <div class="h-logout">
+                        <a href="/logout" class="btn cymbal-button-secondary" style="margin-top: 10px; margin-left: 30px; color: black">
+                            <span class="glyphicon glyphicon-log-out"></span> Log out
+                        </a>
+                    </div>
                 </div>
             </div>
         </div>

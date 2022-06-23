@@ -3,6 +3,35 @@
 </p>
 
 
+## Building for solo purposes
+
+* For local development
+```sh
+# create a local docker repo (k3d method) https://k3d.io/v5.4.1/usage/registries/#using-a-local-registry
+k3d registry create registry.localhost --port 12345
+
+# create k3d cluster
+k3d cluster create cluster1 --image "rancher/k3s:v1.21.3-k3s1"  --k3s-arg "--disable=traefik@server:0" -p "8080:80@loadbalancer" -p "8443:443@loadbalancer" --registry-use k3d-registry.localhost:12345
+
+# tell skaffold that the registry is insecure
+skaffold config set insecure-registries k3d-registry.localhost:12345 --global
+
+# builds and runs in kubernetes using repo
+skaffold run --default-repo k3d-registry.localhost:12345
+```
+
+
+
+* Build images and push to repo
+```shell
+# build and push all images
+skaffold build --push --default-repo gcr.io/solo-test-236622 --tag=my-tag
+
+# build and push a single service
+skaffold build --push --default-repo gcr.io/solo-test-236622 --tag=my-tag-singleservice -b currencyservice
+```
+
+
 ![Continuous Integration](https://github.com/GoogleCloudPlatform/microservices-demo/workflows/Continuous%20Integration%20-%20Main/Release/badge.svg)
 
 > **⚠ ATTENTION: Apache Log4j 2 advisory.**  
